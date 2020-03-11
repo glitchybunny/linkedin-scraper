@@ -23,6 +23,7 @@ driver = webdriver.Chrome('C:/Users/aneogy/chromedriver')
 
 # driver.get method() will navigate to a page given by the URL address
 driver.get('https://www.linkedin.com/')
+sleep(10)
 
 # locate email form by_class_name
 username = driver.find_element_by_name("session_key")
