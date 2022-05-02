@@ -1,75 +1,93 @@
-# import web driver
+# Imports
 import csv
 from parsel import Selector
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 import os.path
-#from selenium.webdriver.common.action_chains import ActionChains
+from os import getenv
 
-file_path = 'C:/Users/aneogy/Desktop/Master_Thesis/TextClassification_Practise/output.csv'
-resp = os.path.isfile(file_path)
+'''
+Data to download:
+- Name
+- Title
+- About
+- Everything listed under:
+    - Experience
+    - Volunteering
+    - Education
+'''
 
-print('Response', resp)
+USERNAME = getenv('USERNAME')
+PASSWORD = getenv('PASSWORD')
 
-# store the information into a csv file
-writer = csv.writer(open(file_path, 'w+', encoding='utf-8-sig', newline=''))
-writer.writerow(['Name', 'Position', 'Company', 'Education', 'Location', 'URL'])
+# Load URLs to download
+with open("urls.txt") as file:  # file with each URL on a new line
+    urls = file.read().split('\n')
 
-
-# specifies the path to the chromedriver.exe
-driver = webdriver.Chrome('C:/Users/aneogy/chromedriver')
-#profile_link="https://www.linkedin.com/in/ananya-neogi-33678653/"
-
-# driver.get method() will navigate to a page given by the URL address
+# Login to linkedin
+driver = webdriver.Chrome()
+actions = ActionChains(driver)
 driver.get('https://www.linkedin.com/')
-sleep(10)
+sleep(3)
+driver.find_element(By.NAME, "session_key").send_keys(USERNAME)
+sleep(0.2)
+driver.find_element(By.NAME, "session_password").send_keys(PASSWORD)
+sleep(0.2)
+driver.find_element(By.CLASS_NAME, "sign-in-form__submit-button").click()
+sleep(3)
 
-# locate email form by_class_name
-username = driver.find_element_by_name("session_key")
-print(username)
-
-# send_keys() to simulate key strokes
-username.send_keys('youremail@gmail.com')
-sleep(10)
-
-# locate password form by_class_name
-password = driver.find_element_by_name('session_password')
-
-# send_keys() to simulate key strokes
-password.send_keys('your account password')
-sleep(2)
-
-# locate submit button by_class_name
-log_in_button = driver.find_element_by_class_name('sign-in-form__submit-btn')
-
-# .click() to mimic button click
-log_in_button.click()
-sleep(2)
-
-# driver.implicitly_wait(10)
-# ActionChains(driver).move_to_element(log_in_button).click(log_in_button).perform()
-
-driver.get('https://www.google.com/')
-search_query = driver.find_element_by_name('q')
-search_query.send_keys('site:linkedin.com/in AND "data scientist" AND "berlin"')
-search_query.send_keys(Keys.RETURN)
-sleep(0.5)
-
-urls = driver.find_elements_by_xpath('//*[@class = "r"]/a[@href]')
-urls = [url.get_attribute('href') for url in urls]
-sleep(0.5)
-
-
+# Go to each page and download publicly available user information
 for url in urls:
-    driver.get(url)
-    sleep(2)
+    if len(url) > 0:
+        # Load page
+        driver.get(url)
+        sleep(3)
 
-    sel = Selector(text = driver.page_source)
+        # Progressively scroll down page to load everything on it
+        driver.execute_script(
+            "const sleep = ms => new Promise(r => setTimeout(r, ms)); let height = document.body.scrollHeight; for (let i=0; i<height/200; i++) {window.scrollTo(0, i*200); await sleep(50)}")
+        sleep(3)
 
-    name = sel.xpath('//*[@class = "inline t-24 t-black t-normal break-words"]/text()').extract_first().split()
-    name = ' '.join(name)
+        # Expand all "...see more" buttons
+        buttons = driver.find_elements(By.TAG_NAME, "button")
+        for button in buttons:
+            if "see" in button.text and "more" in button.text:
+                actions.move_to_element(button).click(button).perform()
+                sleep(0.5)
 
+        # Scrape info from page
+        sel = Selector(text=driver.page_source)
+        name = sel.xpath(
+            '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip()
+        title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip()
+        about = sel.xpath(
+            '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip()
+
+        experience = driver.find_element(By.ID, "experience") \
+            .find_element(By.XPATH, "..") \
+            .find_element(By.XPATH, ".//ul") \
+            .find_elements(By.XPATH, ".//li")
+        print(len(experience))
+        for exp in experience:
+            actions.move_to_element(exp).perform()
+            print(exp)#, exp.text, '\n\n')
+            sleep(0.5)
+            # print(exp.text)
+            # exp_title = exp.find_element(By.XPATH, './/span[@class="mr1 t-bold"]/span').text.strip()
+            # print(exp_title)
+
+        # print("Name:", name)
+        # print("Title:", title)
+        # print("About:", about)
+
+        sleep(10)
+
+driver.quit()
+
+"""
     position = sel.xpath('//*[@class = "mt1 t-18 t-black t-normal"]/text()').extract_first().split()
     position = ' '.join(position)
 
@@ -91,15 +109,11 @@ for url in urls:
     print('Location: ', location)
     print('URL: ', url)
     print('\n')
-          
-    writer.writerow([name,
-                 position,
-                 company,
-                 education,
-                 location,
-                 url])
-          
-driver.quit()
-# locate submit button by_xpath
-#log_in_button = driver.find_element_by_xpath('//*[@type="submit"]')
 
+    writer.writerow([name,
+                     position,
+                     company,
+                     education,
+                     location,
+                     url])
+"""
