@@ -1,16 +1,10 @@
-# Imports
-import csv
-from parsel import Selector
-from time import sleep
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
-import os.path
-from os import getenv
-
 '''
-Data to download:
+&copy; Glitch Taylor 2022
+
+Attempts to scrape information from linkedin using selenium.
+Last working May 6th, 2022. Probably outdated soon.
+
+Data that is downloaded:
 - Name
 - Title
 - About
@@ -20,100 +14,133 @@ Data to download:
     - Education
 '''
 
-USERNAME = getenv('USERNAME')
-PASSWORD = getenv('PASSWORD')
+# Imports
+import json
+from parsel import Selector
+from time import sleep
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+import os.path
+from os import getenv
 
-# Load URLs to download
-with open("urls.txt") as file:  # file with each URL on a new line
-    urls = file.read().split('\n')
 
-# Login to linkedin
-driver = webdriver.Chrome()
-actions = ActionChains(driver)
-driver.get('https://www.linkedin.com/')
-sleep(3)
-driver.find_element(By.NAME, "session_key").send_keys(USERNAME)
-sleep(0.2)
-driver.find_element(By.NAME, "session_password").send_keys(PASSWORD)
-sleep(0.2)
-driver.find_element(By.CLASS_NAME, "sign-in-form__submit-button").click()
-sleep(3)
+def extract_section(section_id):
+    section = []
+    section_items = driver.find_element(By.ID, section_id) \
+        .find_elements(By.XPATH,
+                       '..//ul//li[@class="artdeco-list__item pvs-list__item--line-separated pvs-list__item--one-column"]')
+    if VERBOSE: print(len(section_items), section_id)
 
-# Go to each page and download publicly available user information
-for url in urls:
-    if len(url) > 0:
-        # Load page
-        driver.get(url)
-        sleep(3)
+    for item in section_items:
+        actions.move_to_element(item).perform()
 
-        # Progressively scroll down page to load everything on it
-        driver.execute_script(
-            "const sleep = ms => new Promise(r => setTimeout(r, ms)); let height = document.body.scrollHeight; for (let i=0; i<height/200; i++) {window.scrollTo(0, i*200); await sleep(50)}")
-        sleep(3)
+        # Get item title
+        title = item.find_element(By.CLASS_NAME, 'mr1') \
+            .find_element(By.CLASS_NAME, "visually-hidden").text.strip()
 
-        # Expand all "...see more" buttons
-        buttons = driver.find_elements(By.TAG_NAME, "button")
-        for button in buttons:
-            if "see" in button.text and "more" in button.text:
-                actions.move_to_element(button).click(button).perform()
-                sleep(0.5)
+        # Get item subtitle
+        try:
+            subtitle = item.find_element(By.CLASS_NAME, 't-14') \
+                .find_element(By.CLASS_NAME, 'visually-hidden').text.strip()
+        except:
+            subtitle = None
 
-        # Scrape info from page
-        sel = Selector(text=driver.page_source)
-        name = sel.xpath(
-            '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip()
-        title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip()
-        about = sel.xpath(
-            '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip()
+        # Get item dates, location
+        try:
+            dates = item.find_element(By.CLASS_NAME, 't-black--light') \
+                .find_element(By.CLASS_NAME, 'visually-hidden').text.strip()
+        except:
+            dates = None
 
-        experience = driver.find_element(By.ID, "experience") \
-            .find_element(By.XPATH, "..") \
-            .find_element(By.XPATH, ".//ul") \
-            .find_elements(By.XPATH, ".//li")
-        print(len(experience))
-        for exp in experience:
-            actions.move_to_element(exp).perform()
-            print(exp)#, exp.text, '\n\n')
-            sleep(0.5)
-            # print(exp.text)
-            # exp_title = exp.find_element(By.XPATH, './/span[@class="mr1 t-bold"]/span').text.strip()
-            # print(exp_title)
+        # Get item description
+        try:
+            desc = item.find_element(By.CLASS_NAME, 'pvs-list') \
+                .find_element(By.CLASS_NAME, 'visually-hidden').text.strip()
+        except:
+            desc = None
 
-        # print("Name:", name)
-        # print("Title:", title)
-        # print("About:", about)
+        section.append({"Title": title, "Subtitle": subtitle, "Dates": dates, "Description": desc})
 
-        sleep(10)
+    return section
 
-driver.quit()
 
-"""
-    position = sel.xpath('//*[@class = "mt1 t-18 t-black t-normal"]/text()').extract_first().split()
-    position = ' '.join(position)
+if __name__ == '__main__':
+    # Constants
+    USERNAME = getenv('USERNAME')
+    PASSWORD = getenv('PASSWORD')
+    VERBOSE = True
+    SCRAPED_DATA = {}
 
-    experience = sel.xpath('//*[@class = "pv-top-card--experience-list"]')
-    company = experience.xpath('./li[@data-control-name = "position_see_more"]//span/text()').extract_first()
-    company = ''.join(company.split()) if company else None
-    education = experience.xpath('.//li[@data-control-name = "education_see_more"]//span/text()').extract_first()
-    education = ' '.join(education.split()) if education else None
+    # Load URLs to download
+    with open("urls.txt") as file:  # file with each URL on a new line
+        urls = file.read().split('\n')
 
-    location = ' '.join(sel.xpath('//*[@class = "t-16 t-black t-normal inline-block"]/text()').extract_first().split())
+    # Setup webdriver
+    driver = webdriver.Chrome()
+    actions = ActionChains(driver)
+    options = webdriver.ChromeOptions()
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
 
-    url = driver.current_url
+    # Login to linkedin
+    driver.get('https://www.linkedin.com/')
+    sleep(3)
+    driver.find_element(By.NAME, "session_key").send_keys(USERNAME)
+    sleep(0.2)
+    driver.find_element(By.NAME, "session_password").send_keys(PASSWORD)
+    sleep(0.2)
+    driver.find_element(By.CLASS_NAME, "sign-in-form__submit-button").click()
+    sleep(3)
 
-    print('\n')
-    print('Name: ', name)
-    print('Position: ', position)
-    print('Company: ', company)
-    print('Education: ', education)
-    print('Location: ', location)
-    print('URL: ', url)
-    print('\n')
+    # Go to each page and download publicly available user information
+    for url in urls:
+        if len(url) > 0:
+            # Load page
+            driver.get(url)
+            sleep(3)
 
-    writer.writerow([name,
-                     position,
-                     company,
-                     education,
-                     location,
-                     url])
-"""
+            # Progressively scroll down page to load everything on it
+            driver.execute_script(
+                "const sleep = ms => new Promise(r => setTimeout(r, ms)); let height = document.body.scrollHeight; for (let i=0; i<height/200; i++) {window.scrollTo(0, i*200); await sleep(50)}")
+            sleep(3)
+
+            # Expand all "...see more" buttons
+            buttons = driver.find_elements(By.TAG_NAME, "button")
+            for button in buttons:
+                if "see" in button.text and "more" in button.text:
+                    actions.move_to_element(button).click(button).perform()
+                    sleep(0.5)
+
+            # Scrape basic info from page
+            sel = Selector(text=driver.page_source)
+            name = sel.xpath(
+                '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip()
+            title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip()
+            about = sel.xpath(
+                '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip()
+
+            print("Scraping:", name)
+
+            # Scrape sections
+            experience = extract_section("experience")
+            volunteering = extract_section("volunteering_experience")
+            education = extract_section("education")
+
+            # Record data
+            SCRAPED_DATA[url] = {
+                "Name": name,
+                "Title": title,
+                "About": about,
+                "Experience": experience,
+                "Volunteering": volunteering,
+                "Education": education
+            }
+            sleep(10)
+
+    with open('output.json', 'w') as f:
+        json.dump(SCRAPED_DATA, f)
+
+    driver.quit()
