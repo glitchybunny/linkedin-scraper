@@ -1,3 +1,5 @@
 /.idea/
 urls.txt
-output.json
+*.json
+*.csv
+*.xlsx
