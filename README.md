@@ -1,7 +1,15 @@
-# LinkedIn_scrapper
-  
-# Install Requirements before executing the scrapper code
-## Steps:
-1. cd to the directory where requirements.txt is located.
-2. activate your virtualenv.
-3. run: pip install --user -r requirements.txt in your shell.
+# linkedin-scraper
+
+Attempts to scrape information from linkedin using selenium, saves it in a JSON.
+Last working May 6th, 2022. Will probably outdated soon.
+
+---
+
+Data that's downloaded:
+- Name
+- Title
+- About
+- Everything listed under:
+    - Experience
+    - Volunteering
+    - Education

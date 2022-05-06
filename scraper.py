@@ -4,7 +4,7 @@
 Attempts to scrape information from linkedin using selenium.
 Last working May 6th, 2022. Probably outdated soon.
 
-Data that is downloaded:
+Data that's downloaded:
 - Name
 - Title
 - About
@@ -125,14 +125,25 @@ if __name__ == '__main__':
                     actions.move_to_element(button).click(button).perform()
                     sleep(0.2)
 
-            # Scrape basic info from page
             sel = Selector(text=driver.page_source)
+
+            # Scrape name
             name = sel.xpath(
                 '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip()
             print(name)
-            title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip()
-            about = sel.xpath(
-                '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip()
+
+            # Scape title
+            try:
+                title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip()
+            except AttributeError:
+                title = None
+
+            # Scape about
+            try:
+                about = sel.xpath(
+                    '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip()
+            except AttributeError:
+                about = None
 
             # Scrape sections
             experience = extract_section("experience")
