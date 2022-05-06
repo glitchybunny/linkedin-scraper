@@ -1,9 +1,2 @@
-selenium>=3.141.0
-beautifulsoup4>=4.8.2
-times>=0.7
-parsel>=1.5.2
-sklearn>=0.0
-scikit-learn>=0.21.3
-pandas>=0.25.1
-numpy>=1.17.2
-ipython>=7.16.3
+selenium
+parsel

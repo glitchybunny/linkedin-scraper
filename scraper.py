@@ -40,26 +40,26 @@ def extract_section(section_id):
 
             # Get item title
             title = item.find_element(By.CLASS_NAME, 'mr1') \
-                .find_element(By.CLASS_NAME, "visually-hidden").text.strip()
+                .find_element(By.CLASS_NAME, "visually-hidden").text.strip().replace('\n', ' ')
 
             # Get item subtitle
             try:
                 subtitle = item.find_element(By.CLASS_NAME, 't-14') \
-                    .find_element(By.CLASS_NAME, 'visually-hidden').text.strip()
+                    .find_element(By.CLASS_NAME, 'visually-hidden').text.strip().replace('\n', ' ')
             except:
                 subtitle = None
 
             # Get item dates, location
             try:
                 dates = item.find_element(By.CLASS_NAME, 't-black--light') \
-                    .find_element(By.CLASS_NAME, 'visually-hidden').text.strip()
+                    .find_element(By.CLASS_NAME, 'visually-hidden').text.strip().replace('\n', ' ')
             except:
                 dates = None
 
             # Get item description
             try:
                 desc = item.find_element(By.CLASS_NAME, 'pvs-list') \
-                    .find_element(By.CLASS_NAME, 'visually-hidden').text.strip()
+                    .find_element(By.CLASS_NAME, 'visually-hidden').text.strip().replace('\n', ' ')
             except:
                 desc = None
 
@@ -73,12 +73,6 @@ def extract_section(section_id):
 
 
 if __name__ == '__main__':
-    # Constants
-    USERNAME = getenv('USERNAME')
-    PASSWORD = getenv('PASSWORD')
-    VERBOSE = True
-    SCRAPED_DATA = {}
-
     # Load previously scraped data (if any)
     if os.path.exists("output.json"):
         with open("output.json", "r") as file:
@@ -129,19 +123,19 @@ if __name__ == '__main__':
 
             # Scrape name
             name = sel.xpath(
-                '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip()
+                '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip().replace('\n', ' ')
             print(name)
 
             # Scape title
             try:
-                title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip()
+                title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip().replace('\n', ' ')
             except AttributeError:
                 title = None
 
             # Scape about
             try:
                 about = sel.xpath(
-                    '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip()
+                    '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip().replace('\n', ' ')
             except AttributeError:
                 about = None
 
@@ -160,7 +154,7 @@ if __name__ == '__main__':
                 "Education": education
             }
 
-            # Save after every single scrape, since linkedin likes logging out the scraper
+            # Save after every single scrape just to be sure, since linkedin sometimes logs out
             with open('output.json', 'w') as file:
                 json.dump(SCRAPED_DATA, file)
 
