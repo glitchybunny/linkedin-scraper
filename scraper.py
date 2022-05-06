@@ -73,6 +73,12 @@ def extract_section(section_id):
 
 
 if __name__ == '__main__':
+    # Constants
+    USERNAME = "YOUR_LINKEDIN_USERNAME"
+    PASSWORD = "YOUR_LINKEDIN_PASSWORD"
+    VERBOSE = True
+    SCRAPED_DATA = {}
+
     # Load previously scraped data (if any)
     if os.path.exists("output.json"):
         with open("output.json", "r") as file:
