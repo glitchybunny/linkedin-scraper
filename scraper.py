@@ -62,51 +62,51 @@ def extract_section(section_id):
                 descriptions = item.find_element(By.CLASS_NAME, 'pvs-list')
                 if descriptions:
                     # Loop over descriptions
-                    desc_items = descriptions.find_elements("li")
-                    if len(desc_items) == 1:
+                    desc_items = descriptions.find_elements(By.CLASS_NAME, "pvs-entity")
+                    if len(desc_items) <= 1:
                         # Just a single item description
-                        desc = desc_items[0].find_element(By.CLASS_NAME, 'visually-hidden').text.strip().replace('\n',
-                                                                                                                 ' ')
+                        desc = desc_items[0].find_element(By.CLASS_NAME, 'visually-hidden') \
+                            .text.strip().replace('\n', ' ')
                         section.append({"Title": title, "Subtitle": subtitle, "Dates": dates, "Description": desc})
                     else:
                         # Multiple entries
-                        for desc in descriptions.find_elements("li"):
+                        if VERBOSE: print('+' + str(len(desc_items) - 1))
+                        for desc in desc_items:
                             try:
-                                title2 = " - " + desc.find_element(By.CLASS_NAME, 'mr1') \
+                                title2 = title + " - " + desc.find_element(By.CLASS_NAME, 'mr1') \
                                     .find_element(By.CLASS_NAME, 'visually-hidden') \
                                     .text.strip().replace('\n', ' ')
-                                title += title2
                             except:
-                                pass
-
-                            try:
-                                dates2 = desc.find_element(By.CLASS_NAME, 't-black--light') \
-                                    .find_element(By.CLASS_NAME, 'visually-hidden') \
-                                    .text.strip().replace('\n', ' ')
-                                dates = dates2
-                            except:
-                                pass
+                                title2 = None
 
                             try:
                                 subtitle2 = desc.find_element(By.CLASS_NAME, 't-14') \
                                     .find_element(By.CLASS_NAME, 'visually-hidden') \
                                     .text.strip().replace('\n', ' ')
-                                subtitle = subtitle2
                             except:
-                                pass
+                                subtitle2 = None
+
+                            try:
+                                dates2 = desc.find_element(By.CLASS_NAME, 't-black--light') \
+                                    .find_element(By.CLASS_NAME, 'visually-hidden') \
+                                    .text.strip().replace('\n', ' ')
+                            except:
+                                dates2 = dates
 
                             try:
                                 desc2 = desc.find_element(By.CLASS_NAME, 'pvs-list') \
                                     .find_element(By.CLASS_NAME, 'visually-hidden') \
                                     .text.strip().replace('\n', ' ')
-                                descriptions = desc2
                             except:
-                                pass
+                                desc2 = None
+
+                            if subtitle2 == dates2:
+                                subtitle2 = None
 
                             section.append(
-                                {"Title": title, "Subtitle": subtitle, "Dates": dates, "Description": descriptions})
+                                {"Title": title2, "Subtitle": subtitle2, "Dates": dates2, "Description": desc2})
             except:
-                pass
+                section.append({"Title": title, "Subtitle": subtitle, "Dates": dates, "Description": None})
 
     except NoSuchElementException:
         # Section doesn't exist on page, skip
