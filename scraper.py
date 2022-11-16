@@ -150,8 +150,12 @@ if __name__ == '__main__':
     sleep(random.uniform(3, 4))
 
     # Go to each page and download publicly available user information
+    count = 0
     for url in urls:
-        if len(url) > 0 and url not in SCRAPED_DATA:
+        if len(url) > 0 and url not in SCRAPED_DATA and count < 25:
+            # Only do 25 at a time
+            count += 1
+
             # Load page
             driver.get(url)
             sleep(random.uniform(3, 5))
