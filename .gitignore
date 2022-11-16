@@ -1,5 +1,6 @@
 /.idea/
-urls.txt
+urls-all.txt
 *.json
 *.csv
 *.xlsx
+.env

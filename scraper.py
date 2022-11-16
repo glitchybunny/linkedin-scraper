@@ -1,4 +1,4 @@
-'''
+"""
 &copy; Glitch Taylor 2022
 
 Attempts to scrape information from linkedin using selenium.
@@ -12,10 +12,11 @@ Data that's downloaded:
     - Experience
     - Volunteering
     - Education
-'''
+"""
 
 # Imports
 import json
+import random
 from parsel import Selector
 from time import sleep
 from selenium import webdriver
@@ -49,21 +50,63 @@ def extract_section(section_id):
             except:
                 subtitle = None
 
-            # Get item dates, location
+            # Get item date
             try:
                 dates = item.find_element(By.CLASS_NAME, 't-black--light') \
                     .find_element(By.CLASS_NAME, 'visually-hidden').text.strip().replace('\n', ' ')
             except:
                 dates = None
 
-            # Get item description
+            # Item may have multiple description/date entries, loop over each
             try:
-                desc = item.find_element(By.CLASS_NAME, 'pvs-list') \
-                    .find_element(By.CLASS_NAME, 'visually-hidden').text.strip().replace('\n', ' ')
-            except:
-                desc = None
+                descriptions = item.find_element(By.CLASS_NAME, 'pvs-list')
+                if descriptions:
+                    # Loop over descriptions
+                    desc_items = descriptions.find_elements("li")
+                    if len(desc_items) == 1:
+                        # Just a single item description
+                        desc = desc_items[0].find_element(By.CLASS_NAME, 'visually-hidden').text.strip().replace('\n',
+                                                                                                                 ' ')
+                        section.append({"Title": title, "Subtitle": subtitle, "Dates": dates, "Description": desc})
+                    else:
+                        # Multiple entries
+                        for desc in descriptions.find_elements("li"):
+                            try:
+                                title2 = " - " + desc.find_element(By.CLASS_NAME, 'mr1') \
+                                    .find_element(By.CLASS_NAME, 'visually-hidden') \
+                                    .text.strip().replace('\n', ' ')
+                                title += title2
+                            except:
+                                pass
 
-            section.append({"Title": title, "Subtitle": subtitle, "Dates": dates, "Description": desc})
+                            try:
+                                dates2 = desc.find_element(By.CLASS_NAME, 't-black--light') \
+                                    .find_element(By.CLASS_NAME, 'visually-hidden') \
+                                    .text.strip().replace('\n', ' ')
+                                dates = dates2
+                            except:
+                                pass
+
+                            try:
+                                subtitle2 = desc.find_element(By.CLASS_NAME, 't-14') \
+                                    .find_element(By.CLASS_NAME, 'visually-hidden') \
+                                    .text.strip().replace('\n', ' ')
+                                subtitle = subtitle2
+                            except:
+                                pass
+
+                            try:
+                                desc2 = desc.find_element(By.CLASS_NAME, 'pvs-list') \
+                                    .find_element(By.CLASS_NAME, 'visually-hidden') \
+                                    .text.strip().replace('\n', ' ')
+                                descriptions = desc2
+                            except:
+                                pass
+
+                            section.append(
+                                {"Title": title, "Subtitle": subtitle, "Dates": dates, "Description": descriptions})
+            except:
+                pass
 
     except NoSuchElementException:
         # Section doesn't exist on page, skip
@@ -74,8 +117,8 @@ def extract_section(section_id):
 
 if __name__ == '__main__':
     # Constants
-    USERNAME = "YOUR_LINKEDIN_USERNAME"
-    PASSWORD = "YOUR_LINKEDIN_PASSWORD"
+    USERNAME = getenv("LINKEDIN_USERNAME")
+    PASSWORD = getenv("LINKEDIN_PASSWORD")
     VERBOSE = True
     SCRAPED_DATA = {}
 
@@ -98,50 +141,53 @@ if __name__ == '__main__':
 
     # Login to linkedin
     driver.get('https://www.linkedin.com/')
-    sleep(3)
+    sleep(random.uniform(3, 4))
     driver.find_element(By.NAME, "session_key").send_keys(USERNAME)
-    sleep(0.2)
+    sleep(random.uniform(0.2, 0.4))
     driver.find_element(By.NAME, "session_password").send_keys(PASSWORD)
-    sleep(0.2)
+    sleep(random.uniform(0.2, 0.4))
     driver.find_element(By.CLASS_NAME, "sign-in-form__submit-button").click()
-    sleep(3)
+    sleep(random.uniform(3, 4))
 
     # Go to each page and download publicly available user information
     for url in urls:
         if len(url) > 0 and url not in SCRAPED_DATA:
             # Load page
             driver.get(url)
-            sleep(3)
+            sleep(random.uniform(3, 5))
 
             # Progressively scroll down page to load everything on it
             driver.execute_script(
                 "const sleep = ms => new Promise(r => setTimeout(r, ms)); let height = document.body.scrollHeight; for (let i=0; i<height/200; i++) {window.scrollTo(0, i*200); await sleep(50)}")
-            sleep(3)
+            sleep(random.uniform(3, 5))
 
             # Expand all "...see more" buttons
             buttons = driver.find_elements(By.TAG_NAME, "button")
             for button in buttons:
                 if "see" in button.text and "more" in button.text:
                     actions.move_to_element(button).click(button).perform()
-                    sleep(0.2)
+                    sleep(random.uniform(0.2, 0.4))
 
             sel = Selector(text=driver.page_source)
 
             # Scrape name
             name = sel.xpath(
-                '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip().replace('\n', ' ')
+                '//*[@class = "text-heading-xlarge inline t-24 v-align-middle break-words"]/text()').extract_first().strip().replace(
+                '\n', ' ')
             print(name)
 
             # Scape title
             try:
-                title = sel.xpath('//*[@class = "text-body-medium break-words"]/text()').extract_first().strip().replace('\n', ' ')
+                title = sel.xpath(
+                    '//*[@class = "text-body-medium break-words"]/text()').extract_first().strip().replace('\n', ' ')
             except AttributeError:
                 title = None
 
             # Scape about
             try:
                 about = sel.xpath(
-                    '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip().replace('\n', ' ')
+                    '//*[@class="pv-shared-text-with-see-more t-14 t-normal t-black display-flex align-items-center"]/div/span[@class="visually-hidden"]/text()').extract_first().strip().replace(
+                    '\n', ' ')
             except AttributeError:
                 about = None
 
@@ -164,6 +210,6 @@ if __name__ == '__main__':
             with open('output.json', 'w') as file:
                 json.dump(SCRAPED_DATA, file)
 
-            sleep(1)
+            sleep(random.uniform(10, 15))
 
     driver.quit()
